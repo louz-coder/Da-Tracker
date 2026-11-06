@@ -18,28 +18,15 @@ jobs:
           distribution: 'zulu'
           java-version: '17'
 
-      - name: Locate Project and Build Debug APK
+      - name: Build Debug APK (Root Project Structure)
         run: |
-          echo "Searching for project root directory..."
-          # Find the folder containing build.gradle or build.gradle.kts
-          BUILD_FILE=$(find . -name "build.gradle*" -not -path "./.git/*" -print -quit)
-          
-          if [ -z "$BUILD_FILE" ]; then
-            echo "ERROR: Could not find any build.gradle or build.gradle.kts file in the repository."
-            exit 1
-          fi
-          
-          PROJECT_DIR=$(dirname "$BUILD_FILE")
-          echo "Found project directory at: $PROJECT_DIR"
-          
-          cd "$PROJECT_DIR"
-          
-          # Run build using system gradle
+          # Create a minimal local.properties file if gradle needs it
+          echo "sdk.dir=$ANDROID_HOME" > local.properties
           gradle assembleDebug --stacktrace
 
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
         with:
           name: DA-Tracker-APK
-          path: "**/app/build/outputs/apk/debug/app-debug.apk"
+          path: build/outputs/apk/debug/app-debug.apk
           
