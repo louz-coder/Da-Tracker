@@ -18,19 +18,11 @@ jobs:
           distribution: 'zulu'
           java-version: '17'
 
-      - name: Find and Build Project
-        run: |
-          # Automatically find where gradlew is located and enter that directory
-          PROJECT_DIR=$(dirname $(find . -name "gradlew" -print -quit))
-          echo "Found project in: $PROJECT_DIR"
-          cd "$PROJECT_DIR"
-          
-          chmod +x ./gradlew
-          ./gradlew assembleDebug --stacktrace
+      - name: Build Debug APK using System Gradle
+        run: gradle assembleDebug --stacktrace
 
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
         with:
           name: DA-Tracker-APK
-          path: "**/app/build/outputs/apk/debug/app-debug.apk"
-          
+          path: app/build/outputs/apk/debug/app-debug.apk
