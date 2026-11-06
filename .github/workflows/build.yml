@@ -18,45 +18,63 @@ jobs:
           distribution: 'zulu'
           java-version: '17'
 
-      - name: Auto-Structure and Patch Build Config
+      - name: Generate Proper Android Project Structure
         run: |
-          mkdir -p app/src/main/java
-          
+          # 1. Create standard Android directory layout
+          mkdir -p app/src/main/java/com/datracker/app
+          mkdir -p app/src/main/res
+
+          # 2. Move core files into their proper homes if they exist in root
           if [ -f "AndroidManifest.xml" ]; then
             mv AndroidManifest.xml app/src/main/
           fi
-          
+
           if [ -f "MainActivity.kt" ]; then
-            PACKAGE_DIR=$(grep -oP 'package\s+\K[\w.]+' MainActivity.kt | tr '.' '/' || echo "com/datracker/app")
-            mkdir -p "app/src/main/java/$PACKAGE_DIR"
-            mv MainActivity.kt "app/src/main/java/$PACKAGE_DIR/"
+            mv MainActivity.kt app/src/main/java/com/datracker/app/
+            # Ensure package matches directory
+            sed -i 's/^package .*/package com.datracker.app/g' app/src/main/java/com/datracker/app/MainActivity.kt
           fi
-          
-          if [ -f "settings.gradle.kts" ] && ! grep -q "include" settings.gradle.kts; then
-            echo "include(':app')" >> settings.gradle.kts
-          fi
-          
-          if [ -f "build.gradle.kts" ] && [ ! -f "app/build.gradle.kts" ]; then
+
+          # 3. Create a clean, standard app/build.gradle.kts if missing or fix root one
+          if [ ! -f "app/build.gradle.kts" ] && [ -f "build.gradle.kts" ]; then
             cp build.gradle.kts app/build.gradle.kts
           fi
 
-          # Patch build.gradle.kts files to bypass missing version catalog (libs)
-          for file in build.gradle.kts app/build.gradle.kts; do
-            if [ -f "$file" ]; then
-              sed -i 's/alias(libs.plugins.android.application)/id("com.android.application")/g' "$file"
-              sed -i 's/alias(libs.plugins.kotlin.android)/id("org.jetbrains.kotlin.android")/g' "$file"
-              sed -i 's/alias(libs.plugins.kotlin.compose)/id("org.jetbrains.kotlin.plugin.compose")/g' "$file"
+          # Clean up version catalog references in build files
+          for f in build.gradle.kts app/build.gradle.kts; do
+            if [ -f "$f" ]; then
+              sed -i 's/alias(libs.plugins.android.application)/id("com.android.application")/g' "$f"
+              sed -i 's/alias(libs.plugins.kotlin.android)/id("org.jetbrains.kotlin.android")/g' "$f"
+              sed -i 's/alias(libs.plugins.kotlin.compose)/id("org.jetbrains.kotlin.plugin.compose")/g' "$f"
             fi
           done
 
-          echo "sdk.dir=$ANDROID_HOME" > local.properties
-          
-          echo "--- Starting Gradle Build ---"
-          gradle assembleDebug --stacktrace
+          # 4. Ensure settings.gradle.kts includes ':app'
+          if [ ! -f "settings.gradle.kts" ]; then
+            echo "include(':app')" > settings.gradle.kts
+          elif ! grep -q "include" settings.gradle.kts; then
+            echo "include(':app')" >> settings.gradle.kts
+          fi
 
-      - name: Upload APK Artifact
+          # 5. Create minimal root build.gradle.kts wrapper configuration if needed
+          if ! grep -q "plugins" build.gradle.kts 2>/dev/null; then
+            cat << 'EOF' > build.gradle.kts
+            plugins {
+                id("com.android.application") version "8.2.0" apply false
+                id("org.jetbrains.kotlin.android") version "1.9.0" apply false
+            }
+            EOF
+          fi
+
+          # 6. Set SDK location
+          echo "sdk.dir=$ANDROID_HOME" > local.properties
+
+      - name: Build with Gradle
+        run: gradle assembleDebug --stacktrace
+
+      - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: DA-Tracker-APK
-          path: "**/app/build/outputs/apk/debug/app-debug.apk"
+          path: app/build/outputs/apk/debug/app-debug.apk
           
