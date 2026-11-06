@@ -20,11 +20,9 @@ jobs:
 
       - name: Generate Proper Android Project Structure
         run: |
-          # 1. Create standard Android directory layout
           mkdir -p app/src/main/java/com/datracker/app
           mkdir -p app/src/main/res
 
-          # 2. Move core files into their proper homes if they exist in root
           if [ -f "AndroidManifest.xml" ]; then
             mv AndroidManifest.xml app/src/main/
           fi
@@ -34,7 +32,6 @@ jobs:
             sed -i 's/^package .*/package com.datracker.app/g' app/src/main/java/com/datracker/app/MainActivity.kt
           fi
 
-          # 3. Handle build.gradle.kts files
           if [ ! -f "app/build.gradle.kts" ] && [ -f "build.gradle.kts" ]; then
             cp build.gradle.kts app/build.gradle.kts
           fi
@@ -47,24 +44,16 @@ jobs:
             fi
           done
 
-          # 4. Ensure settings.gradle.kts includes ':app'
           if [ ! -f "settings.gradle.kts" ]; then
             echo "include(':app')" > settings.gradle.kts
           elif ! grep -q "include" settings.gradle.kts; then
             echo "include(':app')" >> settings.gradle.kts
           fi
 
-          # 5. Create minimal root build.gradle.kts if missing (EOF left-aligned at column 0)
           if ! grep -q "plugins" build.gradle.kts 2>/dev/null; then
-            cat << 'EOF' > build.gradle.kts
-plugins {
-    id("com.android.application") version "8.2.0" apply false
-    id("org.jetbrains.kotlin.android") version "1.9.0" apply false
-}
-EOF
+            printf 'plugins {\n    id("com.android.application") version "8.2.0" apply false\n    id("org.jetbrains.kotlin.android") version "1.9.0" apply false\n}\n' > build.gradle.kts
           fi
 
-          # 6. Set SDK location
           echo "sdk.dir=$ANDROID_HOME" > local.properties
 
       - name: Build with Gradle
@@ -75,3 +64,4 @@ EOF
         with:
           name: DA-Tracker-APK
           path: app/build/outputs/apk/debug/app-debug.apk
+          
