@@ -18,50 +18,14 @@ jobs:
           distribution: 'zulu'
           java-version: '17'
 
-      - name: Generate Proper Android Project Structure
-        run: |
-          mkdir -p app/src/main/java/com/datracker/app
-          mkdir -p app/src/main/res
+      - name: Setup Android SDK
+        run: echo "sdk.dir=$ANDROID_HOME" > local.properties
 
-          if [ -f "AndroidManifest.xml" ]; then
-            mv AndroidManifest.xml app/src/main/
-          fi
-
-          if [ -f "MainActivity.kt" ]; then
-            mv MainActivity.kt app/src/main/java/com/datracker/app/
-            sed -i 's/^package .*/package com.datracker.app/g' app/src/main/java/com/datracker/app/MainActivity.kt
-          fi
-
-          if [ ! -f "app/build.gradle.kts" ] && [ -f "build.gradle.kts" ]; then
-            cp build.gradle.kts app/build.gradle.kts
-          fi
-
-          for f in build.gradle.kts app/build.gradle.kts; do
-            if [ -f "$f" ]; then
-              sed -i 's/alias(libs.plugins.android.application)/id("com.android.application")/g' "$f"
-              sed -i 's/alias(libs.plugins.kotlin.android)/id("org.jetbrains.kotlin.android")/g' "$f"
-              sed -i 's/alias(libs.plugins.kotlin.compose)/id("org.jetbrains.kotlin.plugin.compose")/g' "$f"
-            fi
-          done
-
-          if [ ! -f "settings.gradle.kts" ]; then
-            echo "include(':app')" > settings.gradle.kts
-          elif ! grep -q "include" settings.gradle.kts; then
-            echo "include(':app')" >> settings.gradle.kts
-          fi
-
-          if ! grep -q "plugins" build.gradle.kts 2>/dev/null; then
-            printf 'plugins {\n    id("com.android.application") version "8.2.0" apply false\n    id("org.jetbrains.kotlin.android") version "1.9.0" apply false\n}\n' > build.gradle.kts
-          fi
-
-          echo "sdk.dir=$ANDROID_HOME" > local.properties
-
-      - name: Build with Gradle
+      - name: Build Debug APK
         run: gradle assembleDebug --stacktrace
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: DA-Tracker-APK
-          path: app/build/outputs/apk/debug/app-debug.apk
-          
+          path: build/outputs/apk/debug/app-debug.apk
