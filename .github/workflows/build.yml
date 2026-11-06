@@ -31,16 +31,14 @@ jobs:
 
           if [ -f "MainActivity.kt" ]; then
             mv MainActivity.kt app/src/main/java/com/datracker/app/
-            # Ensure package matches directory
             sed -i 's/^package .*/package com.datracker.app/g' app/src/main/java/com/datracker/app/MainActivity.kt
           fi
 
-          # 3. Create a clean, standard app/build.gradle.kts if missing or fix root one
+          # 3. Handle build.gradle.kts files
           if [ ! -f "app/build.gradle.kts" ] && [ -f "build.gradle.kts" ]; then
             cp build.gradle.kts app/build.gradle.kts
           fi
 
-          # Clean up version catalog references in build files
           for f in build.gradle.kts app/build.gradle.kts; do
             if [ -f "$f" ]; then
               sed -i 's/alias(libs.plugins.android.application)/id("com.android.application")/g' "$f"
@@ -56,14 +54,14 @@ jobs:
             echo "include(':app')" >> settings.gradle.kts
           fi
 
-          # 5. Create minimal root build.gradle.kts wrapper configuration if needed
+          # 5. Create minimal root build.gradle.kts if missing (EOF left-aligned at column 0)
           if ! grep -q "plugins" build.gradle.kts 2>/dev/null; then
             cat << 'EOF' > build.gradle.kts
-            plugins {
-                id("com.android.application") version "8.2.0" apply false
-                id("org.jetbrains.kotlin.android") version "1.9.0" apply false
-            }
-            EOF
+plugins {
+    id("com.android.application") version "8.2.0" apply false
+    id("org.jetbrains.kotlin.android") version "1.9.0" apply false
+}
+EOF
           fi
 
           # 6. Set SDK location
@@ -77,4 +75,3 @@ jobs:
         with:
           name: DA-Tracker-APK
           path: app/build/outputs/apk/debug/app-debug.apk
-          
