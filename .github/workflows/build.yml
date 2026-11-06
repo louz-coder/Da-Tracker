@@ -14,11 +14,25 @@ jobs:
 
       - name: Extract and Locate Project
         run: |
-          # Unzip the archive
-          unzip -q *.zip -d source_code
+          echo "--- Listing files in repo ---"
+          ls -la
           
-          # Find the directory containing gradlew automatically
-          PROJECT_DIR=$(dirname $(find source_code -name "gradlew" -print -quit))
+          echo "--- Unzipping ---"
+          mkdir -p source_code
+          unzip -q "*.zip" -d source_code
+          
+          echo "--- Contents of source_code ---"
+          find source_code -maxdepth 3
+
+          # Safely locate the directory containing gradlew
+          GRADLEW_PATH=$(find source_code -name "gradlew" -print -quit)
+          
+          if [ -z "$GRADLEW_PATH" ]; then
+            echo "Error: gradlew file not found anywhere in the zip!"
+            exit 1
+          fi
+          
+          PROJECT_DIR=$(dirname "$GRADLEW_PATH")
           echo "PROJECT_DIR=$PROJECT_DIR" >> $GITHUB_ENV
           echo "Found project directory at: $PROJECT_DIR"
 
