@@ -18,15 +18,13 @@ jobs:
           distribution: 'zulu'
           java-version: '17'
 
-      - name: Build Debug APK (Root Project Structure)
+      - name: Build Debug APK with Info Logging
         run: |
-          # Create a minimal local.properties file if gradle needs it
           echo "sdk.dir=$ANDROID_HOME" > local.properties
-          gradle assembleDebug --stacktrace
+          gradle assembleDebug --info --stacktrace
 
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
         with:
           name: DA-Tracker-APK
           path: build/outputs/apk/debug/app-debug.apk
-          
