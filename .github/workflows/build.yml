@@ -18,7 +18,7 @@ jobs:
           distribution: 'zulu'
           java-version: '17'
 
-      - name: Auto-Structure Project and Build APK
+      - name: Auto-Structure and Patch Build Config
         run: |
           mkdir -p app/src/main/java
           
@@ -40,19 +40,23 @@ jobs:
             cp build.gradle.kts app/build.gradle.kts
           fi
 
+          # Patch build.gradle.kts files to bypass missing version catalog (libs)
+          for file in build.gradle.kts app/build.gradle.kts; do
+            if [ -f "$file" ]; then
+              sed -i 's/alias(libs.plugins.android.application)/id("com.android.application")/g' "$file"
+              sed -i 's/alias(libs.plugins.kotlin.android)/id("org.jetbrains.kotlin.android")/g' "$file"
+              sed -i 's/alias(libs.plugins.kotlin.compose)/id("org.jetbrains.kotlin.plugin.compose")/g' "$file"
+            fi
+          done
+
           echo "sdk.dir=$ANDROID_HOME" > local.properties
           
-          # Run gradle and capture output to print exact error if it fails
-          gradle assembleDebug --console=plain || {
-            echo "----------------------------------------"
-            echo "BUILD FAILED. REPO FILE STRUCTURE:"
-            find . -maxdepth 3
-            echo "----------------------------------------"
-            exit 1
-          }
+          echo "--- Starting Gradle Build ---"
+          gradle assembleDebug --stacktrace
 
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
         with:
           name: DA-Tracker-APK
           path: "**/app/build/outputs/apk/debug/app-debug.apk"
+          
