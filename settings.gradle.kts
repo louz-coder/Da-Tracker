@@ -14,4 +14,3 @@ dependencyResolutionManagement {
 }
 
 rootProject.name = "DA Tracker"
-include(":app")
