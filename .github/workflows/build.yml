@@ -20,44 +20,39 @@ jobs:
 
       - name: Auto-Structure Project and Build APK
         run: |
-          echo "--- Reorganizing flat files into Android layout ---"
-          
-          # Create standard Android directories
           mkdir -p app/src/main/java
           
-          # Move AndroidManifest.xml into app/src/main/ if it's in the root
           if [ -f "AndroidManifest.xml" ]; then
             mv AndroidManifest.xml app/src/main/
-            echo "Moved AndroidManifest.xml -> app/src/main/"
           fi
           
-          # Move MainActivity.kt into a proper java package path
           if [ -f "MainActivity.kt" ]; then
             PACKAGE_DIR=$(grep -oP 'package\s+\K[\w.]+' MainActivity.kt | tr '.' '/' || echo "com/datracker/app")
             mkdir -p "app/src/main/java/$PACKAGE_DIR"
             mv MainActivity.kt "app/src/main/java/$PACKAGE_DIR/"
-            echo "Moved MainActivity.kt -> app/src/main/java/$PACKAGE_DIR/"
           fi
           
-          # Ensure settings.gradle.kts includes the app module
           if [ -f "settings.gradle.kts" ] && ! grep -q "include" settings.gradle.kts; then
             echo "include(':app')" >> settings.gradle.kts
           fi
           
-          # Set up app-level build configuration if only root config exists
           if [ -f "build.gradle.kts" ] && [ ! -f "app/build.gradle.kts" ]; then
             cp build.gradle.kts app/build.gradle.kts
           fi
 
-          # Provide Android SDK path for Gradle
           echo "sdk.dir=$ANDROID_HOME" > local.properties
           
-          echo "--- Starting Gradle Build ---"
-          gradle assembleDebug --stacktrace
+          # Run gradle and capture output to print exact error if it fails
+          gradle assembleDebug --console=plain || {
+            echo "----------------------------------------"
+            echo "BUILD FAILED. REPO FILE STRUCTURE:"
+            find . -maxdepth 3
+            echo "----------------------------------------"
+            exit 1
+          }
 
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
         with:
           name: DA-Tracker-APK
           path: "**/app/build/outputs/apk/debug/app-debug.apk"
-          
